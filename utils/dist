@@ -1,0 +1,67 @@
+#!/usr/bin/make -f
+#
+# Copyright (c) 2011-2015 Casper Ti. Vector
+# Public domain.
+
+CP = cp -a
+MV = mv -f
+MD = mkdir -p
+RM = rm -rf
+ZIP = zip -rT
+MAKE = make
+SELF = utils/dist
+PERM = find . -type d -exec chmod 755 '{}' + && \
+	find . -type f -exec chmod 644 '{}' +
+
+dist:
+	$(SELF) distclean
+	$(SELF) dist-ctan
+	$(SELF) clean
+
+tex-dist: tex/
+	$(CP) tex/ $@
+	cd $@ && $(MAKE) && rm -f Makefile
+
+doc-dist: doc/
+	# Make the directory.
+	$(MD) $@/
+	# Example src and pdf.
+	cd doc/example/ && $(MAKE) && $(MAKE) clean
+	$(MV) doc/example/$(EXAMPLE).pdf $@/example.pdf
+	$(CP) doc/example/ $@/example
+	# Readme src and pdf.
+	cd doc/readme/ && $(MAKE) && $(MAKE) clean
+	$(MV) doc/readme/$(README).pdf $@/readme.pdf
+	$(CP) doc/readme/ $@/readme
+
+dir-tds: tex-dist doc-dist
+	$(MD) $@/tex/latex/ $@/doc/latex/
+	$(CP) tex-dist/ $@/tex/latex/$(TITLE)
+	$(CP) doc-dist/ $@/doc/latex/$(TITLE)
+
+dist-tds: $(TITLE).tds.zip
+$(TITLE).tds.zip: dir-tds
+	cd $< && $(PERM) && $(ZIP) ../$@ tex/ doc/
+
+dir-ctan: README tex-dist doc-dist $(TITLE).tds.zip
+	$(MD) $@/$(TITLE)/
+	$(CP) README $@/$(TITLE)/
+	$(CP) tex-dist/ $@/$(TITLE)/tex
+	$(CP) doc-dist/ $@/$(TITLE)/doc
+	$(MV) $(TITLE).tds.zip $@/
+
+dist-ctan: $(TITLE)-$(VERSION).zip
+$(TITLE)-$(VERSION).zip: dir-ctan
+	cd $< && $(PERM) && \
+		$(ZIP) -y ../$@ $(TITLE)/ $(TITLE).tds.zip
+
+clean:
+	cd doc/readme/ && $(MAKE) distclean
+	cd doc/example/ && $(MAKE) distclean
+	$(RM) dir-ctan/ dir-tds/ tex-dist/ doc-dist/
+
+distclean:
+	$(SELF) clean
+	$(RM) $(TITLE).tds.zip $(TITLE)-$(VERSION).zip
+
+# vim:ts=4:sw=4
